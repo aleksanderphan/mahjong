@@ -2,6 +2,7 @@
 import { basePoints, clampTai } from './scoring.js';
 import { TAI_CATALOG, CATEGORIES, taiValue } from './rules.js';
 import { prefs, zh, unit } from './prefs.js';
+import { sampleHtml } from './samples.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const byCat = (c) => TAI_CATALOG.filter((x) => x.cat === c);
@@ -82,7 +83,7 @@ function calculator() {
 function taiTable(cat) {
   const r = prefs.rules;
   return `<table class="simple"><tr><th>${CATEGORIES[cat]}</th><th>Tai</th></tr>
-    ${byCat(cat).map((x) => `<tr><td>${nm(x)}<div class="muted small">${esc(x.desc)}</div></td><td>${x.input === 'count' ? `${taiValue(r, x.id)} each` : taiValue(r, x.id)}${taiValue(r, x.id) > r.taiCap ? ` <span class="muted small">→ ${r.taiCap}</span>` : ''}${taiValue(r, x.id) !== x.def ? ' <span class="chg">house</span>' : ''}</td></tr>`).join('')}
+    ${byCat(cat).map((x) => `<tr><td>${nm(x)}<div class="muted small">${esc(x.desc)}</div>${sampleHtml(x.id)}</td><td>${x.input === 'count' ? `${taiValue(r, x.id)} each` : taiValue(r, x.id)}${taiValue(r, x.id) > r.taiCap ? ` <span class="muted small">→ ${r.taiCap}</span>` : ''}${taiValue(r, x.id) !== x.def ? ' <span class="chg">house</span>' : ''}</td></tr>`).join('')}
   </table>`;
 }
 

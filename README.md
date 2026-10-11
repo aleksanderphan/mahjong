@@ -17,7 +17,7 @@ Live, shared score tracker for a 4-player Singapore mahjong table — free to ho
 | 🧮 Score | Standalone calculator with the same pattern picker |
 | 🏆 Ranking | Today / week / month / year / all-time; rank by points, avg per game, wins, win rate, highest Tai, self-draws, pay-all wins, games played, #1 finishes, safest |
 | 👥 Players | Directory with handles ("Dragon Master"), career stats, profile with recent games |
-| 📖 Rules & Tai | Claiming priority, single-primary-hand rule, Tai → points, pay-all triggers, full Tai catalogue, calculator, 🀄 tile picture guide |
+| 📖 Rules & Tai | Claiming priority, single-primary-hand rule, Tai → points, pay-all triggers, full Tai catalogue with a sample hand picture for each pattern, calculator, 🀄 tile picture guide |
 | ⚙️ House rules | Min Tai, Tai cap (3–10 or no cap), special-win Tai, double wind, score label, auto dealer + draw rule, instant payout amounts, pay-all multiplier, final-wall threshold, Tai per pattern, show/hide Chinese |
 | 🧪 Test suite | 24 in-app business-rule checks (also run in Node) |
 | 💾 Backup | Download / copy JSON, upload / paste JSON (merge), reset rankings (season), sample tournament (demo mode) |
@@ -59,6 +59,7 @@ js/data.js            shared state & cache
 js/ui.js              helpers: sheets, dialogs, toasts, clipboard, downloads
 js/scoring.js         payouts: 2^Tai, discard/self-draw/pay-all, instant, manual, audit
 js/rules.js           house rules, Tai catalogue, dealer rotation
+js/samples.js         sample hand pictures for the scoring guide (checked by the self-test)
 js/hand.js            hand evaluation (single-primary-hand rule, Seven Pairs, min Tai)
 js/picker.js          pattern picker (Quick / Scan / Limit / Catalog / Tai only)
 js/scan.js, scan-core.js  Gemini photo scan (image shrink, prompt, strict JSON parsing)

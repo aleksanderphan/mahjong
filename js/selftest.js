@@ -1,12 +1,13 @@
 // Business-rule verification suite. Runs in the browser (Tests page) and in Node (tests/selftest.test.mjs).
 import { basePoints, winDeltas, instantDeltas, manualDeltas, audit } from './scoring.js';
-import { mergeRules, dealerState, HOUSE_DEFAULTS } from './rules.js';
+import { mergeRules, dealerState, HOUSE_DEFAULTS, TAI_CATALOG } from './rules.js';
 import { evaluateHand, emptySelection, selectionToList, listToSelection } from './hand.js';
 import { computeLeaderboard } from './stats.js';
 import { buildRecap, recapText } from './recap-core.js';
 import { parseScan, buildScanPrompt } from './scan-core.js';
-import { blankHand, simulate } from './handcalc.js';
+import { blankHand, simulate, handProblems } from './handcalc.js';
 import { mapClass, bestHand } from './detect-core.js';
+import { SAMPLES, sampleHand, sampleCtx } from './samples.js';
 
 const eq = (a, b, msg) => {
   const A = JSON.stringify(a), B = JSON.stringify(b);
@@ -194,6 +195,20 @@ export const TESTS = [
     const ps = sim(H([['chow', 'm1'], ['chow', 'm4'], ['chow', 'm7'], ['pong', 'p5']], 's2', { called: false }));
     ok(ps.selection.flags.pureStraight, 'pure straight found'); eq(ps.actual, 3);   // straight 2 + concealed 1 (mixed suits, so no colour bonus)
     ok(!sim(H([['chow', 'm1'], ['chow', 'p4'], ['chow', 's7'], ['pong', 'p5']], 's2')).selection.flags.pureStraight, 'different suits are not a straight');
+  }],
+  ['Guide sample hands', 'Every sample picture in the scoring guide is a legal hand that really scores as the pattern it illustrates.', () => {
+    for (const id of Object.keys(SAMPLES)) {
+      const hand = sampleHand(id);
+      const r = simulate(hand, R(), sampleCtx(id));
+      ok(!handProblems(hand).length, `${id}: sample hand is not legal (${handProblems(hand).join(', ')})`);
+      if (id === 'chicken') { eq(r.actual, 0); continue; }
+      ok(r.valid, `${id}: sample is not a valid win (${r.errors.join(', ')})`);
+      ok(r.patterns.some((p) => p.id === id), `${id}: sample scores as ${r.patterns.map((p) => p.id).join(', ') || 'nothing'}`);
+    }
+    // every Tai-catalogue pattern that can be drawn has a picture (situational ones — Heavenly, Earthly, Human, win circumstances — do not)
+    const situational = ['heavenly', 'earthly', 'human', 'kongWin', 'lastTile', 'robKong'];
+    const missing = TAI_CATALOG.filter((x) => !SAMPLES[x.id] && !situational.includes(x.id)).map((x) => x.id);
+    eq(missing, []);
   }],
   ['House rule defaults', 'Defaults match the Singapore / SEA reference.', () => {
     eq([HOUSE_DEFAULTS.minTai, HOUSE_DEFAULTS.taiCap, HOUSE_DEFAULTS.baoMultiplier], [1, 5, 6]);
