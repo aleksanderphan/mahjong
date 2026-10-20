@@ -1,7 +1,7 @@
 // Run: node tests/stats.test.mjs
 import assert from 'node:assert/strict';
 import { winDeltas, kongDeltas } from '../js/scoring.js';
-import { computeLeaderboard, rankPlayers } from '../js/stats.js';
+import { computeLeaderboard, rankPlayers, tableGroups, tableBreakdown } from '../js/stats.js';
 
 const ev = (o) => ({ voided: false, createdAt: 1, ...o });
 const win = (winner, shooter, tai, selfDraw = false) =>
@@ -52,5 +52,46 @@ t('ranking with ties', () => {
   for (let i = 1; i < r.length; i++) assert.ok(r[i - 1].points >= r[i].points);
   const tie = rankPlayers([{ name: 'x', points: 5 }, { name: 'y', points: 5 }, { name: 'z', points: 1 }], 'points');
   assert.deepEqual(tie.map((p) => p.rank), [1, 1, 3]);
+});
+// ----- tables: the same four players, any seat order -----
+const T = [
+  { code: 'T1', players: ['Ann', 'Bo', 'Cy', 'Di'], createdAt: 10 },
+  { code: 'T2', players: ['di', 'Cy', ' ann', 'Bo'], createdAt: 20 },          // same four, other seats, other spelling
+  { code: 'T3', players: ['Ann', 'Bo', 'Cy', 'Ed'], createdAt: 30 },          // a different table
+  { code: 'T4', players: ['Ann', 'Bo', 'Cy', 'Di'], createdAt: 40, status: 'cancelled' },
+  { code: 'T5', players: ['Ann', 'Bo', 'Cy', 'Di'], createdAt: 50 },          // nothing played
+];
+const TE = {
+  T1: [win(0, 1, 3)],                       // Ann wins off Bo
+  T2: [win(3, null, 2, true)],              // seat 3 = Bo wins by self-draw
+  T3: [win(1, 0, 4)],
+  T4: [win(0, 1, 3)],
+  T5: [],
+};
+const groups = tableGroups(T, TE);
+t('tables group the same four players in any seat order; cancelled and empty games do not count', () => {
+  assert.equal(groups.length, 2);
+  assert.deepEqual(groups.map((g) => g.rooms.map((r) => r.code)), [['T3'], ['T2', 'T1']]);   // most recently played table first, newest game first
+  assert.deepEqual(groups.map((g) => g.games), [1, 2]);
+  assert.deepEqual(groups[1].players, ['di', 'Cy', 'ann', 'Bo']);                              // seats of the newest game
+});
+t('a table ranks its four players on their points together', () => {
+  const board = rankPlayers(computeLeaderboard(groups[1].rooms, TE, []), 'points');
+  assert.equal(board.length, 4);
+  assert.equal(board.reduce((s, p) => s + p.points, 0), 0);
+  assert.ok(board.every((p) => p.games === 2));
+});
+t('game by game breakdown adds up to the same totals', () => {
+  const g = groups[1];
+  const b = tableBreakdown(g, TE);
+  assert.deepEqual(b.rows.map((r) => r.code), ['T2', 'T1']);
+  const board = Object.fromEntries(computeLeaderboard(g.rooms, TE, []).map((p) => [p.key, p.points]));
+  for (const c of b.columns) assert.equal(c.total, board[c.key]);                              // same numbers as the ranking
+  for (const r of b.rows) assert.equal(Object.values(r.nets).reduce((s, x) => s + x, 0), 0);  // every game is zero-sum
+  for (let i = 1; i < b.columns.length; i++) assert.ok(b.columns[i - 1].total >= b.columns[i].total);
+});
+t('directory ids keep a renamed player in the same table', () => {
+  const r = [{ code: 'X1', players: ['Ann', 'Bo', 'Cy', 'Di'], playerIds: ['1', '2', '3', '4'], createdAt: 1 }, { code: 'X2', players: ['Annie', 'Bo', 'Cy', 'Di'], playerIds: ['1', '2', '3', '4'], createdAt: 2 }];
+  assert.equal(tableGroups(r, { X1: [win(0, 1, 2)], X2: [win(1, 0, 2)] }).length, 1);
 });
 console.log(`\n${n} tests passed`);

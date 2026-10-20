@@ -466,6 +466,8 @@ label.btn.disabled { opacity: .5; pointer-events: none; }
 .handline { display: flex; flex-wrap: wrap; gap: 8px 10px; justify-content: center; padding: 12px 6px; background: var(--felt); border-radius: 14px; margin: 8px 0; }
 .handline .mj { --tw: 30px; } .handline.bonus { background: var(--felt-3); padding: 6px; } .handline .emo { font-size: 26px; }
 .sample .handline { margin: 6px 0 2px; padding: 8px 4px; gap: 6px 8px; } .sample .handline .mj { --tw: 24px; } .sample .handline.bonus { padding: 4px; } .sample .small { margin-top: 2px; }
+.tscroll { overflow-x: auto; } .tgames th, .tgames td { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; } .tgames th:first-child, .tgames td:first-child { text-align: left; } .tgames tr.ttotal td { border-top: 2px solid var(--line); }
+.tablehead2 b { font-size: 17px; }
 .contcard { border-left: 4px solid var(--gold); } .contcard h2 { margin: 0 0 4px; } .contcard .row-gap { margin-top: 8px; }
 .grp { display: inline-flex; gap: 2px; } .grp.open { padding: 2px; border-radius: 6px; background: rgba(255,255,255,.18); }
 .winhead { text-align: center; background: var(--gold-2); border: 2px solid var(--gold); border-radius: 14px; padding: 10px; margin-top: 6px; }

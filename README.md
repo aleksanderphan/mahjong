@@ -15,7 +15,7 @@ Live, shared score tracker for a 4-player Singapore mahjong table — free to ho
 | 🏁 Recap | Champion, rounds, duration, standings with self-draw / discard / pay-all counts, what each player won with, all rounds, highest hand; host can correct who discarded a winning tile (✏️ in *What they won with*); share via WhatsApp, Teams format, copy text, CSV |
 | 📷 AI hand scan | In Record win / Score: photograph the winning hand, Google Gemini (Firebase AI Logic, free tier) reads the tiles and fills in the patterns with a confidence score for you to check |
 | 🧮 Score | Standalone calculator with the same pattern picker |
-| 🏆 Ranking | Today / week / month / year / all-time; rank by points, avg per game, wins, win rate, highest Tai, self-draws, pay-all wins, games played, #1 finishes, safest |
+| 🏆 Ranking | **All players** (points accumulated over every game) or **By table (4 players)**: pick a set of 4 players and see their ranking, total points and a game-by-game points grid; Today / week / month / year / all-time; rank by points, avg per game, wins, win rate, highest Tai, self-draws, pay-all wins, games played, #1 finishes, safest |
 | 👥 Players | Directory with handles ("Dragon Master"), career stats, profile with recent games |
 | 📖 Rules & Tai | Claiming priority, single-primary-hand rule, Tai → points, pay-all triggers, full Tai catalogue with a sample hand picture for each pattern, calculator, 🀄 tile picture guide |
 | ⚙️ House rules | Min Tai, Tai cap (3–10 or no cap), special-win Tai, double wind, score label, auto dealer + draw rule, instant payout amounts, pay-all multiplier, final-wall threshold, Tai per pattern, show/hide Chinese |

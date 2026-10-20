@@ -3,6 +3,14 @@ import { MAX_TAI, audit, INSTANT_KINDS } from './scoring.js';
 
 export const playerKey = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
+/** Who sat in this seat: the directory id when known, else the (case-insensitive) name. */
+function seatKey(room, seat, byName) {
+  const id = room.playerIds?.[seat];
+  if (id) return 'id:' + id;
+  const r = byName.get(playerKey(room.players[seat]));
+  return r ? 'id:' + r.id : 'name:' + playerKey(room.players[seat]);
+}
+
 function blank(key, name, handle = '', id = null) {
   return {
     key, id, name, handle,
@@ -20,12 +28,7 @@ function blank(key, name, handle = '', id = null) {
 export function computeLeaderboard(rooms, eventsByRoom, roster = []) {
   const map = new Map();
   const byName = new Map(roster.map((p) => [playerKey(p.name), p]));
-  const keyFor = (room, seat) => {
-    const id = room.playerIds?.[seat];
-    if (id) return 'id:' + id;
-    const r = byName.get(playerKey(room.players[seat]));
-    return r ? 'id:' + r.id : 'name:' + playerKey(room.players[seat]);
-  };
+  const keyFor = (room, seat) => seatKey(room, seat, byName);
   const get = (room, seat) => {
     const k = keyFor(room, seat);
     if (!map.has(k)) {
@@ -120,4 +123,45 @@ export function roomsInPeriod(rooms, eventsByRoom, since, resetAt = 0) {
     const last = Math.max(r.createdAt || 0, ...evs.map((e) => e.createdAt || 0));
     return last >= (since || 0) && (r.createdAt || 0) >= (resetAt || 0);
   });
+}
+
+/**
+ * Tables: games played by exactly the same four players (any seat order). A table is what a regular foursome plays.
+ * Cancelled and empty games do not count. Returns [{ key, players (names, newest game's seats), rooms (newest first), games, lastPlayed }], most recently played first.
+ */
+export function tableGroups(rooms, eventsByRoom, roster = []) {
+  const byName = new Map(roster.map((p) => [playerKey(p.name), p]));
+  const groups = new Map();
+  for (const room of rooms) {
+    if (room.status === 'cancelled') continue;
+    const evs = eventsByRoom[room.code] || [];
+    if (audit(evs).active === 0) continue;
+    const key = room.players.map((_, seat) => seatKey(room, seat, byName)).sort().join('|');
+    const last = Math.max(room.createdAt || 0, ...evs.map((e) => e.createdAt || 0));
+    if (!groups.has(key)) groups.set(key, { key, rooms: [], lastPlayed: 0 });
+    const g = groups.get(key); g.rooms.push(room); g.lastPlayed = Math.max(g.lastPlayed, last);
+  }
+  return [...groups.values()].map((g) => {
+    const rs = [...g.rooms].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return { ...g, rooms: rs, players: rs[0].players.map((n) => String(n).trim()), games: rs.length };
+  }).sort((a, b) => b.lastPlayed - a.lastPlayed);
+}
+
+/**
+ * Game by game for one table: net points of each of the four players in every game plus their totals.
+ * columns are ordered by total points (best first); rows are newest game first.
+ */
+export function tableBreakdown(group, eventsByRoom, roster = []) {
+  const byName = new Map(roster.map((p) => [playerKey(p.name), p]));
+  const newest = group.rooms[0];
+  const rows = group.rooms.map((room) => {
+    const a = audit(eventsByRoom[room.code] || []);
+    const nets = {};
+    room.players.forEach((_, seat) => { nets[seatKey(room, seat, byName)] = a.balances[seat]; });
+    return { code: room.code, createdAt: room.createdAt || 0, status: room.status || 'active', hands: a.hands, nets };
+  });
+  const columns = newest.players.map((name, seat) => ({ key: seatKey(newest, seat, byName), name: String(name).trim() }))
+    .map((c) => ({ ...c, total: rows.reduce((t, r) => t + (r.nets[c.key] || 0), 0) }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  return { columns, rows, hands: rows.reduce((t, r) => t + r.hands, 0) };
 }
