@@ -1,7 +1,7 @@
 // Run: node tests/scoring.test.mjs
 import assert from 'node:assert/strict';
 import {
-  basePoints, winDeltas, kongDeltas, instantDeltas, bonusDeltas, adjustDeltas, audit, settlement, sum, formatMoney,
+  basePoints, winDeltas, kongDeltas, instantDeltas, bonusDeltas, adjustDeltas, audit, settlement, sum, formatMoney, reassignShooter,
 } from '../js/scoring.js';
 
 let passed = 0;
@@ -59,6 +59,25 @@ t('bonus + adjust', () => {
   assert.deepEqual(bonusDeltas({ player: 0, units: 1 }), [3, -1, -1, -1]);
   assert.deepEqual(bonusDeltas({ player: 0, units: 2, from: 1 }), [2, -2, 0, 0]);
   assert.deepEqual(adjustDeltas({ from: 3, to: 2, units: 5 }), [0, 0, 5, -5]);
+});
+
+t('change who discarded: same result as recording it correctly', () => {
+  // winner 0, shooter 2 (3 tai) -> corrected to shooter 1
+  assert.deepEqual(reassignShooter(winDeltas({ winner: 0, shooter: 2, tai: 3 }), 0, 2, 1), winDeltas({ winner: 0, shooter: 1, tai: 3 }));
+  assert.deepEqual(reassignShooter([32, -8, -16, -8], 0, 2, 2), [32, -8, -16, -8]); // same player: unchanged
+  for (let w = 0; w < 4; w++) for (let o = 0; o < 4; o++) for (let n = 0; n < 4; n++) for (let tai = 1; tai <= 7; tai++) {
+    if (o === w || n === w) continue;
+    const fixed = reassignShooter(winDeltas({ winner: w, shooter: o, tai }), w, o, n);
+    assert.deepEqual(fixed, winDeltas({ winner: w, shooter: n, tai }));
+    assert.equal(sum(fixed), 0);
+  }
+});
+
+t('change who discarded: only plain discard wins', () => {
+  assert.throws(() => reassignShooter(winDeltas({ winner: 0, shooter: 2, tai: 3 }), 0, 2, 0), /cannot be the winner/);
+  assert.throws(() => reassignShooter(winDeltas({ winner: 1, selfDraw: true, tai: 3 }), 1, 0, 2), /not a plain discard win/);
+  assert.throws(() => reassignShooter(winDeltas({ winner: 0, shooter: 2, tai: 3, baoBy: 2 }), 0, 2, 1), /not a plain discard win/);
+  assert.throws(() => reassignShooter([32, -8, -16, -8], 0, 3, 1), /not a plain discard win/); // recorded discarder does not match the amounts
 });
 
 t('every generated event is zero-sum (fuzz)', () => {

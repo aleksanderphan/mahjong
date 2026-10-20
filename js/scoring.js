@@ -86,6 +86,22 @@ export function winDeltas({ winner, shooter = null, selfDraw = false, tai, cap =
   return d;
 }
 
+/**
+ * Correct who discarded the winning tile on a discard win: the new discarder takes over the 2 x base the old one paid,
+ * the old one pays 1 x base. Works on the recorded deltas, so the winner's amount and everyone else stay exactly as they were.
+ */
+export function reassignShooter(deltas, winner, oldShooter, newShooter) {
+  assertSeat(winner, 'winner'); assertSeat(oldShooter, 'old discarder'); assertSeat(newShooter, 'new discarder');
+  if (newShooter === winner) throw new Error('The discarder cannot be the winner');
+  const gain = deltas[winner];
+  const base = gain / 4; // a discard win pays the winner 2 + 1 + 1 = 4 x base
+  const plain = deltas.every((x, i) => i === winner || x === (i === oldShooter ? -2 * base : -base));
+  if (oldShooter === winner || !(base > 0) || !Number.isInteger(base) || !plain) throw new Error('This entry is not a plain discard win, so the discarder cannot be changed here');
+  const d = [...deltas];
+  if (newShooter !== oldShooter) { d[oldShooter] += base; d[newShooter] -= base; }
+  return d;
+}
+
 /** Instant payout: every opponent pays settings[kind] to the receiver (×2 when held from the deal, for kinds that allow it). */
 export function instantDeltas({ player, kind, fromDeal = false }, settings = DEFAULT_SETTINGS) {
   assertSeat(player, 'player');

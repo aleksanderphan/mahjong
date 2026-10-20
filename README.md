@@ -12,7 +12,7 @@ Live, shared score tracker for a 4-player Singapore mahjong table — free to ho
 | Record win | Winner → self-draw / discard / pay-all (包赔, with trigger) → patterns via **Quick 3-step**, **Limit**, **Catalog** or **Tai only**; single-primary-hand rule, Seven Pairs 2/4 Tai (discard/self-draw), Mixed & Pure Orphans, Pure Straight, min-Tai rejection, live actual/effective Tai & base point, settlement preview, remarks |
 | Instant payout | Exposed kong 2 each, concealed kong 4 each, flower/season set 4 each, matched flower+season 2 each (no bites) |
 | Other actions | Draw round, manual adjust (±10/5/2, zero-sum, reason required), undo last, audit log with void / restore / **edit past round**, reset points, finish game, end / quit |
-| 🏁 Recap | Champion, rounds, duration, standings with self-draw / discard / pay-all counts, what each player won with, all rounds, highest hand; share via WhatsApp, Teams format, copy text, CSV |
+| 🏁 Recap | Champion, rounds, duration, standings with self-draw / discard / pay-all counts, what each player won with, all rounds, highest hand; host can correct who discarded a winning tile (✏️ in *What they won with*); share via WhatsApp, Teams format, copy text, CSV |
 | 📷 AI hand scan | In Record win / Score: photograph the winning hand, Google Gemini (Firebase AI Logic, free tier) reads the tiles and fills in the patterns with a confidence score for you to check |
 | 🧮 Score | Standalone calculator with the same pattern picker |
 | 🏆 Ranking | Today / week / month / year / all-time; rank by points, avg per game, wins, win rate, highest Tai, self-draws, pay-all wins, games played, #1 finishes, safest |

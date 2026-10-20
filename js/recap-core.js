@@ -35,7 +35,8 @@ export function buildRecap(room, events, rules = {}) {
       if (!ev.selfDraw && ev.shooter != null) players[ev.shooter].shots++;
       const cap = ev.cap || rules.taiCap || MAX_TAI;
       const detail = { round: n, tai: ev.tai, effective: Math.min(ev.tai, cap), base: basePoints(ev.tai, cap), points: ev.deltas[ev.winner],
-        method: methodText(ev, names), patterns: ev.patterns ? patternText(ev.patterns) : '', selfDraw: !!ev.selfDraw, remarks: ev.remarks || '' };
+        method: methodText(ev, names), patterns: ev.patterns ? patternText(ev.patterns) : '', selfDraw: !!ev.selfDraw, remarks: ev.remarks || '',
+        id: ev.id, winner: ev.winner, shooter: ev.shooter ?? null, changeShooter: !ev.selfDraw && ev.baoBy == null && Number.isInteger(ev.shooter) };
       p.winsDetail.push(detail);
       rounds.push({ n, type: 'win', text: `${names[ev.winner]} (${ev.baoBy != null ? 'Pay-all' : ev.selfDraw ? 'Self-draw' : `from ${names[ev.shooter]}`})`, tai: ev.tai, patterns: detail.patterns });
       if (!highest || ev.tai > highest.tai) highest = { seat: ev.winner, name: names[ev.winner], ...detail };

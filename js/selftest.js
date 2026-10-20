@@ -1,5 +1,5 @@
 // Business-rule verification suite. Runs in the browser (Tests page) and in Node (tests/selftest.test.mjs).
-import { basePoints, winDeltas, instantDeltas, manualDeltas, audit } from './scoring.js';
+import { basePoints, winDeltas, instantDeltas, manualDeltas, audit, reassignShooter } from './scoring.js';
 import { mergeRules, dealerState, HOUSE_DEFAULTS, TAI_CATALOG } from './rules.js';
 import { evaluateHand, emptySelection, selectionToList, listToSelection } from './hand.js';
 import { computeLeaderboard } from './stats.js';
@@ -115,6 +115,19 @@ export const TESTS = [
     eq(r.standings[0].seat, 1); eq(r.players[1].wins, 2); eq(r.players[1].payAll, 1); eq(r.players[0].selfDraws, 1);
     ok(/All Pong/.test(recapText(r, 'whatsapp')), 'recap mentions patterns');
     eq(r.highest.tai, 4);
+  }],
+  ['Recap: change who discarded', 'Only plain discard wins can be corrected; the new discarder pays 2×, the old one 1×, the total stays 0.', () => {
+    const room = { code: 'T', players: ['A', 'B', 'C', 'D'], createdAt: 0, settings: {} };
+    const evs = [
+      { ...win(0, { id: 'e1', shooter: 2, tai: 3 }), deltas: winDeltas({ winner: 0, shooter: 2, tai: 3 }) },
+      { ...win(1, { id: 'e2', selfDraw: true, tai: 2 }), deltas: winDeltas({ winner: 1, selfDraw: true, tai: 2 }) },
+      { ...win(3, { id: 'e3', shooter: 2, baoBy: 2, tai: 4 }), deltas: winDeltas({ winner: 3, shooter: 2, baoBy: 2, tai: 4 }) },
+    ];
+    const r = buildRecap(room, evs, R());
+    eq(r.players.flatMap((p) => p.winsDetail).map((w) => [w.id, w.changeShooter]), [['e1', true], ['e2', false], ['e3', false]]);
+    const fixed = reassignShooter(evs[0].deltas, 0, 2, 3);
+    eq(fixed, [32, -8, -8, -16]); eq(sum(fixed), 0);
+    eq(buildRecap(room, [{ ...evs[0], shooter: 3, deltas: fixed }], R()).rounds[0].text, 'A (from D)');
   }],
   ['Leaderboard is zero-sum', 'All players’ points across games add up to 0.', () => {
     const rooms = [{ code: 'X', players: ['A', 'B', 'C', 'D'], createdAt: 1 }];
