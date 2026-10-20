@@ -71,7 +71,7 @@ export async function renderGameTab($app) {
       <a class="btn primary block big" href="#/new">Start new game</a>
       <form id="joinForm" class="joinrow"><input type="text" name="code" placeholder="Game code e.g. K7PX2M" maxlength="10" required /><button class="btn">Join</button></form></section>
     ${active.length ? `<section class="card"><h2>Games in progress</h2>${active.map((r) => gameCard(r, d.eventsByRoom[r.code])).join('')}</section>` : ''}
-    ${last ? `<section class="card"><h2>Last finished game</h2>${gameCard(last, d.eventsByRoom[last.code])}<a class="btn block" href="#/t/${esc(last.code)}/recap">View results summary</a></section>` : ''}`;
+    ${last ? `<section class="card"><h2>Last finished game</h2>${gameCard(last, d.eventsByRoom[last.code])}<a class="btn primary block" href="#/new/${esc(last.code)}">↩ Continue this table</a><a class="btn block" href="#/t/${esc(last.code)}/recap">View results summary</a></section>` : ''}`;
   document.getElementById('joinForm').onsubmit = (e) => {
     e.preventDefault();
     const code = new FormData(e.target).get('code').trim().toUpperCase().replace(/^MJ-\d{8}-/, '');

@@ -97,7 +97,7 @@ function render($app) {
     <section class="gamehead">
       <div class="gh-top"><div><div class="gid">${esc(gameNumber(r))}</div>
         <div class="gh-dealer">${ds.enabled ? `🀀 Dealer ${zh('庄')}: <b>${pname(ds.dealer)}</b>${ds.streak ? ` <span class="lian">${zh('连')}+${ds.streak}</span>` : ''}` : esc(r.name || '')}</div>
-        <div class="small muted">${r.location ? `${esc(r.location)} · ` : ''}Round #${rounds + 1}${ds.enabled ? ` · ${WIND_NAMES[ds.round]} round ${zh(WIND_ZH[ds.round] + '风')}` : ''}${ds.streak ? ` (${zh('连庄')} ×${ds.streak})` : ''}</div></div>
+        <div class="small muted">${r.location ? `${esc(r.location)} · ` : ''}${r.continuesFrom ? `<a href="#/t/${esc(r.continuesFrom)}/recap">↩ continues ${esc(r.continuesFrom)}</a> · ` : ''}Round #${rounds + 1}${ds.enabled ? ` · ${WIND_NAMES[ds.round]} round ${zh(WIND_ZH[ds.round] + '风')}` : ''}${ds.streak ? ` (${zh('连庄')} ×${ds.streak})` : ''}</div></div>
         <div class="gh-side"><span class="status ${esc(r.status || 'active')}">${esc(r.status || 'active')}</span>
           <div class="balance ${a.balanced ? 'ok' : 'bad'}">${a.balanced ? '✓ Balanced' : '✗ Unbalanced'} (${a.total})</div></div></div>
       <div class="gh-share"><span class="small muted">Code</span> <span class="code">${esc(r.code)}</span><button class="btn sm" data-act="share">🔗 Share</button><button class="btn sm" data-act="qr">📱 QR</button>
@@ -234,7 +234,7 @@ async function onClick(e, $app) {
     setCurrentGame(''); invalidate(); toast('Game ended'); location.hash = '#/'; return;
   }
   if (act === 'applyRules') {
-    const set = ruleSet(S().ruleSetId || 'default'); const next = { ...tableSettings(set.rules), ruleSetId: set.id, ruleSetName: set.name };
+    const set = ruleSet(S().ruleSetId || 'default'); const next = { ...tableSettings(set.rules), ruleSetId: set.id, ruleSetName: set.name, ...(S().resume ? { resume: S().resume } : {}) };
     await app.store.updateRoomSettings(v.room.code, next); v.room.settings = next; toast('Game now uses your house rules'); return render($app);
   }
 }

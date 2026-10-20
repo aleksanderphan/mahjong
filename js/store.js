@@ -125,6 +125,8 @@ async function createFirebaseStore() {
       await fs.setDoc(fs.doc(db, 'players', id), { createdAt: Date.now(), ...data, updatedAt: Date.now() }, { merge: true });
       return id;
     },
+    /** Games only (no events) — cheap enough to look for a table's earlier games. */
+    async listRooms() { return (await fs.getDocs(fs.collection(db, 'rooms'))).docs.map((d) => ({ code: d.id, ...d.data() })); },
     async loadAll() {
       const [rs, es, ps] = await Promise.all([
         fs.getDocs(fs.collection(db, 'rooms')),
@@ -258,6 +260,7 @@ function createLocalStore() {
       save(db); notify();
       return id;
     },
+    async listRooms() { return Object.entries(load().rooms).map(([code, r]) => ({ code, ...r.room })); },
     async loadAll() {
       const db = load();
       const rooms = Object.entries(db.rooms).map(([code, r]) => ({ code, ...r.room }));

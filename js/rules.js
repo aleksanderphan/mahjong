@@ -134,12 +134,15 @@ export const WIND_ZH = ['東', '南', '西', '北'];
 
 /**
  * Dealer / round tracking derived from the event log.
- * Dealer starts at seat 0 (East), round wind East.
+ * Dealer starts at seat 0 (East), round wind East — or at settings.resume when the table continues an earlier game.
  */
 export function dealerState(events, settings = {}) {
   const auto = settings.autoDealer ?? HOUSE_DEFAULTS.autoDealer;
   const drawRule = settings.drawRule ?? HOUSE_DEFAULTS.drawRule;
-  let dealer = 0, round = 0, hand = 1, streak = 0;
+  // A table continued from an earlier game starts where that one stopped (settings.resume = { dealer, round, streak }).
+  const rs = settings.resume || {};
+  const at = (x, max) => (Number.isInteger(x) && x >= 0 && x <= max ? x : 0);
+  let dealer = at(rs.dealer, 3), round = at(rs.round, 3), hand = 1, streak = at(rs.streak, 99);
   if (!auto) return { enabled: false, dealer, round, hand, streak };
   const rotate = () => { dealer = (dealer + 1) % 4; streak = 0; if (dealer === 0) round = (round + 1) % 4; };
   for (const ev of events) {

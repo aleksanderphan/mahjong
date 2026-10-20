@@ -8,6 +8,7 @@ import { parseScan, buildScanPrompt } from './scan-core.js';
 import { blankHand, simulate, handProblems } from './handcalc.js';
 import { mapClass, bestHand } from './detect-core.js';
 import { SAMPLES, sampleHand, sampleCtx } from './samples.js';
+import { tableResume, resumeText, seatsFor, samePlayers, latestRoomWith, resumeForSeats } from './continue.js';
 
 const eq = (a, b, msg) => {
   const A = JSON.stringify(a), B = JSON.stringify(b);
@@ -128,6 +129,27 @@ export const TESTS = [
     const fixed = reassignShooter(evs[0].deltas, 0, 2, 3);
     eq(fixed, [32, -8, -8, -16]); eq(sum(fixed), 0);
     eq(buildRecap(room, [{ ...evs[0], shooter: 3, deltas: fixed }], R()).rounds[0].text, 'A (from D)');
+  }],
+  ['Continue a closed table', 'A closed game offers to continue: same seats, and the dealer / round wind / streak pick up where it stopped.', () => {
+    const room = (over = {}) => ({ code: 'A', players: ['Ann', 'Bo', 'Cy', 'Di'], playerIds: ['p1', 'p2', 'p3', 'p4'], status: 'completed', createdAt: 100, settings: {}, ...over });
+    const evs = [win(1), win(2), win(2)]; // dealer 0 -> 1 (Bo won) -> 2 (Cy won) -> Cy wins again and stays, streak 1
+    eq(tableResume(room(), evs), { dealer: 2, round: 0, streak: 1 });
+    eq(tableResume(room(), []), null);                                  // nothing played
+    eq(tableResume(room({ settings: { autoDealer: false } }), evs), null); // dealer was not tracked
+    eq(tableResume(room({ settings: { resume: { dealer: 3, round: 1, streak: 0 } } }), [win(3)]), { dealer: 3, round: 1, streak: 1 }); // a continued game continues again
+    eq(resumeText({ dealer: 2, round: 1, streak: 1 }, ['Ann', 'Bo', 'Cy', 'Di']), 'South round · dealer Cy (连+1)');
+    eq(seatsFor(room(), [{ id: 'p3', name: 'Cy' }, { id: 'x', name: 'Ann' }, { id: 'p2', name: 'Bo' }]), ['x', 'p2', 'p3', null]); // by id, else by name
+    // only the same four players continue a table
+    const four = ['Ann', 'Bo', 'Cy', 'Di'];
+    ok(samePlayers(four, ['di', 'Cy', ' ann', 'Bo']), 'same four in any order / case');
+    ok(!samePlayers(four, ['Ann', 'Bo', 'Cy', 'Ed']), 'one different player');
+    ok(!samePlayers(four, ['Ann', 'Bo', 'Cy', '']) && !samePlayers(four, ['Ann', 'Bo', 'Cy']), 'incomplete table');
+    eq(latestRoomWith([room({ createdAt: 1 }), room({ code: 'B', createdAt: 5, status: 'active' }), room({ code: 'C', createdAt: 9, players: ['Ann', 'Bo', 'Cy', 'Ed'] })], four).code, 'B');
+    eq(latestRoomWith([room({ players: ['Ann', 'Bo', 'Cy', 'Ed'] })], four), null);
+    eq(resumeForSeats({ dealer: 2, round: 1, streak: 1 }, four, four), { dealer: 2, round: 1, streak: 1 });
+    eq(resumeForSeats({ dealer: 2, round: 1, streak: 1 }, four, ['Cy', 'Ann', 'Bo', 'Di']).dealer, 0);   // Cy deals and now sits East
+    eq(resumeForSeats({ dealer: 2, round: 1, streak: 1 }, four, ['Ann', 'Bo', 'Cy', 'Ed']), null);        // a different player: wind table starts again
+    eq(resumeForSeats(null, four, four), null);
   }],
   ['Leaderboard is zero-sum', 'All players’ points across games add up to 0.', () => {
     const rooms = [{ code: 'X', players: ['A', 'B', 'C', 'D'], createdAt: 1 }];

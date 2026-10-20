@@ -40,6 +40,18 @@ t('dealer: stays on dealer win, rotates otherwise, round advances', () => {
   d = dealerState([win(1), win(2), win(3), win(0)]);
   assert.deepEqual([d.dealer, d.round], [0, 1]); // back to East seat, South round
 });
+t('dealer: a continued table starts where the last one stopped', () => {
+  const resume = { dealer: 2, round: 1, streak: 1 };
+  let d = dealerState([], { resume });
+  assert.deepEqual([d.dealer, d.round, d.streak], [2, 1, 1]);
+  d = dealerState([win(2)], { resume });                 // dealer wins again: stays, streak grows
+  assert.deepEqual([d.dealer, d.round, d.streak], [2, 1, 2]);
+  d = dealerState([win(0)], { resume: { dealer: 3, round: 1, streak: 0 } }); // non-dealer wins: dealer 3 -> 0, East seat again -> next round wind
+  assert.deepEqual([d.dealer, d.round, d.streak], [0, 2, 0]);
+  d = dealerState([], { resume: { dealer: 9, round: -1, streak: 'x' } });    // junk is ignored: start at East
+  assert.deepEqual([d.dealer, d.round, d.streak], [0, 0, 0]);
+  assert.equal(dealerState([win(1)], { resume, autoDealer: false }).enabled, false);
+});
 t('draw rule + voided + disabled', () => {
   const draw = { type: 'draw', voided: false };
   assert.equal(dealerState([draw], { drawRule: 'stay' }).dealer, 0);

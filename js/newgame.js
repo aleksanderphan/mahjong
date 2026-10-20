@@ -1,16 +1,72 @@
 // Start a new game: pick 4 seats from the player directory, table settings, launch.
 import { prefs, zh, myName, setMyName } from './prefs.js';
 import { ruleSets, ruleSet, settingsFor, DEFAULT_ID } from './rulesets.js';
-import { app, getRoster, invalidateRoster, setCurrentGame, invalidate } from './data.js';
-import { esc, toast, sheet, closeSheet, WIND_EN, WIND_ZH } from './ui.js';
+import { app, getRoster, invalidateRoster, setCurrentGame, invalidate, recent } from './data.js';
+import { esc, toast, sheet, closeSheet, fmtDate, WIND_EN, WIND_ZH } from './ui.js';
+import { loadContinuation, resumeText, seatsFor, samePlayers, latestRoomWith, resumeForSeats, CLOSED } from './continue.js';
+import { gameNumber } from './recap-core.js';
 
-export async function renderNewGame($app) {
+export async function renderNewGame($app, fromCode = '') {
   $app.innerHTML = '<p class="muted center pad">Loading players…</p>';
   let roster = [];
   try { roster = await getRoster(true); } catch (err) { console.error(err); }
-  const f = { seats: [null, null, null, null], start: 0, keeper: myName(), location: '', notes: '', name: '', pin: '', lobby: true, rs: DEFAULT_ID };
+  const f = { seats: [null, null, null, null], start: 0, keeper: myName(), location: '', notes: '', name: '', pin: '', lobby: true, rs: DEFAULT_ID, resume: true };
+  // Continuing a closed game (#/new/CODE): same players in the same seats, same place, and the wind table carries on.
+  let from = null; let tip = null; let tipHidden = false;
+  if (fromCode) {
+    try { from = await loadContinuation(app.store, { code: fromCode }); } catch (err) { console.error(err); }
+    if (from) {
+      const r = from.room;
+      Object.assign(f, { seats: seatsFor(r, roster), start: Number(r.startingScore) || 0, location: r.location || '', name: r.name || '', rs: r.settings?.ruleSetId || DEFAULT_ID });
+    } else toast('That game cannot be continued');
+  }
   if (!ruleSets().some((x) => x.id === f.rs)) f.rs = DEFAULT_ID;
   let hr = ruleSet(f.rs).rules;
+
+  const seatNames = () => f.seats.map((id) => roster.find((p) => p.id === id)?.name || '');
+  const keyOf = (names) => (names.every(Boolean) ? names.map((n) => n.toLowerCase()).sort().join('|') : '');
+  // The wind table only carries over to exactly the same four players (the dealer moves with their seat).
+  const resumeNow = () => (from && f.resume ? resumeForSeats(from.resume, from.room.players, seatNames()) : null);
+
+  // Recommendation: the newest earlier game of exactly the four chosen players, if it is closed.
+  let rooms = null; let match = null; let matchKey = '';
+  const refreshMatch = async () => {
+    if (from) return;
+    const names = seatNames(); const key = keyOf(names);
+    if (!key || key === matchKey) return;
+    matchKey = key; match = null;
+    try {
+      rooms ??= await app.store.listRooms();
+      const r = latestRoomWith(rooms, names);
+      match = r && CLOSED.includes(r.status) ? await loadContinuation(app.store, { code: r.code }) : null;
+    } catch (err) { console.error(err); }
+    if (key === keyOf(seatNames()) && location.hash.startsWith('#/new')) draw();
+  };
+
+  const contBox = () => {
+    const names = seatNames();
+    if (from) {
+      const r = from.room; const same = samePlayers(names, r.players);
+      const missing = r.players.filter((n) => !roster.some((p) => p.name.toLowerCase() === n.toLowerCase()));
+      return `<section class="card contcard"><div class="row-between"><h2>↩ Continuing ${esc(gameNumber(r))}</h2><a class="small" href="#/new">Start fresh instead</a></div>
+        <p class="small">Same 4 players: <b>${r.players.map(esc).join(' · ')}</b>${r.location ? ` · ${esc(r.location)}` : ''}</p>
+        ${missing.length ? `<p class="small neg">${missing.map(esc).join(', ')} ${missing.length > 1 ? 'are' : 'is'} not in your player list — add them with ＋ Add player to continue with the same four.</p>`
+          : !same ? '<p class="small neg">⚠ The players are not the same four any more.</p>' : ''}
+        ${from.resume ? (same ? `<label class="check"><input type="checkbox" data-resume ${f.resume ? 'checked' : ''}/> Continue the wind table: <b>${esc(resumeText(resumeForSeats(from.resume, r.players, names), names))}</b></label>`
+            : '<p class="small muted">The wind table only continues with the same 4 players, so it will start again at East.</p>')
+          : '<p class="small muted">That game did not track the dealer, so the table starts again at East.</p>'}</section>`;
+    }
+    const four = names.every(Boolean);
+    let shown = null;
+    if (four) shown = matchKey === keyOf(names) ? match : (tip && samePlayers(names, tip.room.players) ? tip : null);
+    else if (tip && names.filter(Boolean).every((n) => tip.room.players.some((p) => p.toLowerCase() === n.toLowerCase()))) shown = tip;
+    if (!shown || tipHidden) return '';
+    const r = shown.room;
+    return `<section class="card contcard"><h2>💡 ${four ? 'These 4 played together before' : 'Continue your last table?'}</h2>
+      <p class="small"><b>${esc(gameNumber(r))}</b> · ${fmtDate(r.createdAt)} · ${r.players.map(esc).join(' · ')}</p>
+      <p class="small muted">${shown.resume ? `It stopped in the <b>${esc(resumeText(shown.resume, r.players))}</b>. Continue it so the wind table carries on.` : 'Same players and seats, ready to go.'}</p>
+      <div class="row-gap"><a class="btn primary" href="#/new/${esc(r.code)}">↩ Continue this table</a><button type="button" class="btn" data-hidetip>No, start fresh</button></div></section>`;
+  };
 
   const draw = () => {
     const assigned = (id, seat) => f.seats.some((s, i) => s === id && i !== seat);
@@ -18,6 +74,7 @@ export async function renderNewGame($app) {
     hr = ruleSet(f.rs).rules;
     $app.innerHTML = `
       <div class="pagehead"><h1>Start new mahjong game</h1><p class="muted">Pick 4 players and table settings</p></div>
+      ${contBox()}
       <section class="card">
         <div class="row-between"><h2>Seat assignments</h2><span class="small ${ready === 4 ? 'pos' : 'muted'}">${ready}/4 players</span></div>
         <button type="button" class="btn sm" data-add>＋ Add player</button>
@@ -49,6 +106,10 @@ export async function renderNewGame($app) {
       <p class="center small muted">Joining a friend's game? Open <a href="#/game">Game</a> and enter their code.</p>`;
   };
   draw();
+  // Not continuing anything yet: look for a closed game in this phone's history and recommend it (does not block the form).
+  if (!fromCode) {
+    loadContinuation(app.store, { codes: recent().map((x) => x.code) }).then((t) => { if (t && location.hash.startsWith('#/new')) { tip = t; draw(); } }).catch(() => {});
+  }
 
   const addPlayer = () => sheet({
     title: '＋ Add player', body: playerForm(), footer: '<button class="btn primary block" data-save>Save player</button>',
@@ -62,7 +123,7 @@ export async function renderNewGame($app) {
         const id = await app.store.savePlayer({ name, handle });
         invalidateRoster(); roster = await getRoster(true);
         const free = f.seats.indexOf(null); if (free >= 0) f.seats[free] = id;
-        closeSheet(); draw(); toast(`${name} added`);
+        closeSheet(); draw(); refreshMatch(); toast(`${name} added`);
       });
     },
   });
@@ -71,6 +132,7 @@ export async function renderNewGame($app) {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.add !== undefined) return addPlayer();
     if (b.dataset.shuffle !== undefined) { f.seats = [...f.seats].sort(() => Math.random() - 0.5); return draw(); }
+    if (b.dataset.hidetip !== undefined) { tipHidden = true; return draw(); }
     if (b.dataset.launch !== undefined) {
       const ps = f.seats.map((id) => roster.find((p) => p.id === id));
       if (ps.some((p) => !p)) return toast('Choose 4 players');
@@ -82,7 +144,9 @@ export async function renderNewGame($app) {
           name: f.name.trim() || `Mahjong ${new Date().toLocaleDateString()}`,
           players: ps.map((p) => p.name), playerIds: ps.map((p) => p.id), handles: ps.map((p) => p.handle || ''),
           startingScore: Math.trunc(Number(f.start) || 0), scorekeeper: f.keeper.trim(), location: f.location.trim(), notes: f.notes.trim(),
-          settings: settingsFor(f.rs), status: f.lobby ? 'lobby' : 'active', hostName: f.keeper.trim() || 'Host', hasPin: !!pin,
+          settings: { ...settingsFor(f.rs), ...(resumeNow() ? { resume: resumeNow() } : {}) },
+          status: f.lobby ? 'lobby' : 'active', hostName: f.keeper.trim() || 'Host', hasPin: !!pin,
+          ...(from && samePlayers(seatNames(), from.room.players) ? { continuesFrom: from.room.code } : {}),
         });
         if (f.keeper.trim()) setMyName(f.keeper.trim());
         if (pin) { try { await app.store.setHostPin(code, pin); } catch (err) { console.error(err); toast('PIN not saved: ' + (err.code || err.message)); } }
@@ -94,8 +158,9 @@ export async function renderNewGame($app) {
   $app.onchange = (e) => {
     const t = e.target;
     if (t.dataset.lobby !== undefined) { f.lobby = t.checked; return; }
+    if (t.dataset.resume !== undefined) { f.resume = t.checked; return; }
     if (t.dataset.rs !== undefined) { f.rs = t.value; return draw(); }
-    if (t.dataset.seat !== undefined) { f.seats[t.dataset.seat] = t.value || null; return draw(); }
+    if (t.dataset.seat !== undefined) { f.seats[t.dataset.seat] = t.value || null; draw(); return refreshMatch(); }
   };
   $app.oninput = (e) => { const k = e.target.dataset.f; if (k) f[k] = e.target.value; };
 }

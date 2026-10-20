@@ -84,7 +84,7 @@ async function route() {
   try {
     switch (page) {
       case '': return await renderHome($app);
-      case 'new': return await renderNewGame($app);
+      case 'new': return await renderNewGame($app, (parts[1] || '').toUpperCase());
       case 'game': return await renderGameTab($app);
       case 't': {
         const code = (parts[1] || '').toUpperCase();
