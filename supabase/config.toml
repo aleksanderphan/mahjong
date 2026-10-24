@@ -1,0 +1,3 @@
+# Minimal Supabase CLI config (supabase link --project-ref <ref>, then supabase db push / functions deploy).
+[functions.scan-hand]
+verify_jwt = true
